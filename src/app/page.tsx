@@ -26,12 +26,21 @@ export default function Dashboard() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
-    const res = await fetch(`/api/summary?year=${year}`)
-    const data = await res.json()
-    setSummary(data)
+    setApiError(null)
+    try {
+      const res = await fetch(`/api/summary?year=${year}`)
+      if (!res.ok) throw new Error(`Server error (${res.status})`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setSummary(data)
+    } catch (e: any) {
+      setApiError(e.message || 'Failed to load data')
+      setSummary(null)
+    }
     setLoading(false)
   }
 
@@ -45,7 +54,7 @@ export default function Dashboard() {
     setDeleting(null)
   }
 
-  const monthlyData = summary
+  const monthlyData = summary?.monthly
     ? Object.entries(summary.monthly)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, d]) => ({
@@ -100,6 +109,18 @@ export default function Dashboard() {
       {loading ? (
         <div style={{ color: '#4a4a6a', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', padding: '2rem 0' }}>
           LOADING DATA...
+        </div>
+      ) : apiError ? (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem', borderColor: '#2a1a1a' }}>
+          <p style={{ color: '#ef4444', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+            CONNECTION ERROR
+          </p>
+          <p style={{ color: '#4a4a6a', fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>
+            {apiError}
+          </p>
+          <button onClick={load} className="btn-primary" style={{ marginTop: '1.5rem' }}>
+            RETRY
+          </button>
         </div>
       ) : !summary || summary.tripCount === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
